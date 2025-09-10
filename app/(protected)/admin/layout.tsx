@@ -1,48 +1,88 @@
-import { DeployButton } from "@/components/deploy-button";
-import { EnvVarWarning } from "@/components/env-var-warning";
-import { AuthButton } from "@/app/auth/components/auth-button";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import { hasEnvVars } from "@/lib/utils";
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
-export default function ProtectedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <main className="min-h-screen flex flex-col items-center">
-      <div className="flex-1 w-full flex flex-col gap-20 items-center">
-        <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
-          <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
-            <div className="flex gap-5 items-center font-semibold">
-              <Link href={"/"}>Next.js Supabase Starter</Link>
-              <div className="flex items-center gap-2">
-                <DeployButton />
-              </div>
-            </div>
-            {!hasEnvVars ? <EnvVarWarning /> : <AuthButton />}
-          </div>
-        </nav>
-        <div className="flex-1 flex flex-col gap-20 max-w-5xl p-5">
-          {children}
+    <div className="bg-[#F4EDE5] min-h-screen flex">
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "sidebar fixed inset-y-0 left-0 w-64 bg-indigo-800 text-white shadow-lg transition-transform md:translate-x-0",
+          menuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
+      >
+        <div className="p-4 flex items-center space-x-3 border-b border-indigo-700">
+          <i className="fas fa-user-shield text-2xl"></i>
+          <h1 className="text-xl font-bold">Admin Portal</h1>
         </div>
+        <nav className="p-4">
+          <ul className="space-y-2">
+            <li>
+              <Link
+                href="/admin"
+                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-indigo-700"
+              >
+                <i className="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/clubs"
+                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-indigo-700"
+              >
+                <i className="fas fa-users"></i>
+                <span>Clubs</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/events"
+                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-indigo-700"
+              >
+                <i className="fas fa-calendar-check"></i>
+                <span>Events</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/event-proposals"
+                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-indigo-700"
+              >
+                <i className="fas fa-file-alt"></i>
+                <span>Proposals</span>
+              </Link>
+            </li>
+          </ul>
+        </nav>
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-indigo-700">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
+              <i className="fas fa-user"></i>
+            </div>
+            <div>
+              <p className="text-sm font-medium">Admin User</p>
+              <p className="text-xs text-indigo-300">admin@university.edu</p>
+            </div>
+          </div>
+        </div>
+      </aside>
 
-        <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
-          <p>
-            Powered by{" "}
-            <a
-              href="https://supabase.com/?utm_source=create-next-app&utm_medium=template&utm_term=nextjs"
-              target="_blank"
-              className="font-bold hover:underline"
-              rel="noreferrer"
-            >
-              Supabase
-            </a>
-          </p>
-          <ThemeSwitcher />
-        </footer>
-      </div>
-    </main>
+      {/* Mobile toggle */}
+      <button
+        onClick={() => setMenuOpen(!menuOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 bg-indigo-600 text-white p-2 rounded-lg"
+      >
+        <i className="fas fa-bars"></i>
+      </button>
+
+      {/* Main content */}
+      <main className="ml-0 md:ml-64 flex-1">{children}</main>
+    </div>
   );
 }
