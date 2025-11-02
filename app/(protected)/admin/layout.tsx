@@ -1,11 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] = useState<{ email: string; full_name: string; role: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/auth/user"); // no token needed
+        if (!res.ok) {
+          window.location.href = "/auth/login";
+          return;
+        }
+
+        const data = await res.json();
+        console.log("Fetched user:", data);
+
+        // role and full_name come from profile
+        const profile = data.profile;
+        if (!profile || profile.role !== "admin") {
+          window.location.href = "/auth/error"; // redirect non-admins
+          return;
+        }
+
+        setUser({
+          email: data.user.email,
+          full_name: profile.full_name || "Admin User",
+          role: profile.role,
+        });
+      } catch (err) {
+        console.error(err);
+        window.location.href = "/auth/login";
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#F4EDE5]">
+        <p className="text-gray-700 text-lg">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#F4EDE5] min-h-screen flex">
@@ -61,15 +106,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </ul>
         </nav>
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-indigo-700">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
-              <i className="fas fa-user"></i>
+          {user && (
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
+                <i className="fas fa-user"></i>
+              </div>
+              <div>
+                <p className="text-sm font-medium">{user.full_name}</p>
+                <p className="text-xs text-indigo-300">{user.email}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium">Admin User</p>
-              <p className="text-xs text-indigo-300">admin@university.edu</p>
-            </div>
-          </div>
+          )}
         </div>
       </aside>
 

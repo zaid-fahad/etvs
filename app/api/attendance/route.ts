@@ -1,14 +1,13 @@
-// app/api/auth/login/route.ts
+// app/api/attendance/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
-  const { email, password } = await req.json();
+  const { user_id, event_id, status } = await req.json();
   const supabase = await createClient();
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
+  const { data, error } = await supabase.from("attendance").upsert({ user_id, event_id, status }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  return NextResponse.json({ user: data.user, session: data.session });
+  return NextResponse.json({ attendance: data });
 }
