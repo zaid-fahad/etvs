@@ -2,6 +2,21 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const supabase = await createClient();
+  const { id } = params;
+
+  const { data, error } = await supabase
+    .from("events_proposals")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  return NextResponse.json({ proposal: data });
+}
+
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
   const { status, remarks } = await req.json();

@@ -1,34 +1,44 @@
+// app/(protected)/admin/event-proposals/page.tsx
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 interface Proposal {
   id: string;
   title: string;
-  club: string;
+  club_name: string;
   date: string;
   status: "Pending" | "Approved" | "Rejected";
 }
 
 export default function EventProposalsPage() {
-  const [proposals, setProposals] = useState<Proposal[]>([
-    { id: "1", title: "AI Bootcamp Proposal", club: "Tech Club", date: "Oct 15, 2023", status: "Pending" },
-    { id: "2", title: "Art Workshop Proposal", club: "Arts Society", date: "Nov 5, 2023", status: "Pending" },
-    { id: "3", title: "Sports Meet Proposal", club: "Athletics Club", date: "Dec 1, 2023", status: "Rejected" },
-  ]);
-
+  const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterClub, setFilterClub] = useState("");
 
-  const clubs = Array.from(new Set(proposals.map((p) => p.club)));
+  // ✅ Fetch proposals from API
+  useEffect(() => {
+    async function fetchProposals() {
+      const res = await fetch("/api/event-proposals");
+      const json = await res.json();
+      setProposals(json.proposals || []);
+    }
+    fetchProposals();
+  }, []);
 
+  // ✅ Unique club list
+  const clubs = Array.from(
+    new Set((proposals ?? []).map((p) => p.club_name))
+  );
+
+  // ✅ Filter logic
   const filteredProposals = useMemo(() => {
-    return proposals.filter((p) => {
+    return (proposals ?? []).filter((p) => {
       const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = filterStatus ? p.status === filterStatus : true;
-      const matchesClub = filterClub ? p.club === filterClub : true;
+      const matchesClub = filterClub ? p.club_name === filterClub : true;
       return matchesSearch && matchesStatus && matchesClub;
     });
   }, [proposals, searchQuery, filterStatus, filterClub]);
@@ -46,14 +56,22 @@ export default function EventProposalsPage() {
     }
   };
 
+  // ✅ Loading UI before proposals arrive
+  if (proposals === null) {
+    return (
+      <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6 text-lg">
+        Loading proposals...
+      </div>
+    );
+  }
+
   return (
     <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6 space-y-6">
-      {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 rounded-xl flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Event Proposals</h1>
         <Link href="/admin/event-proposals/new">
           <button className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-            <i className="fas fa-plus mr-2"></i> Submit Proposal
+            Submit Proposal
           </button>
         </Link>
       </header>
@@ -63,7 +81,7 @@ export default function EventProposalsPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="w-full md:w-1/4 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+          className="w-full md:w-1/4 px-4 py-2 border rounded-lg"
         >
           <option value="">All Status</option>
           <option value="Pending">Pending</option>
@@ -74,7 +92,7 @@ export default function EventProposalsPage() {
         <select
           value={filterClub}
           onChange={(e) => setFilterClub(e.target.value)}
-          className="w-full md:w-1/4 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+          className="w-full md:w-1/4 px-4 py-2 border rounded-lg"
         >
           <option value="">All Clubs</option>
           {clubs.map((club) => (
@@ -87,20 +105,20 @@ export default function EventProposalsPage() {
           placeholder="Search by title..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+          className="w-full md:w-1/3 px-4 py-2 border rounded-lg"
         />
       </div>
 
-      {/* Proposals Table */}
+      {/* Table */}
       <div className="bg-white rounded-xl shadow-md overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Club</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Title</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Club</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -108,20 +126,19 @@ export default function EventProposalsPage() {
               filteredProposals.map((proposal) => (
                 <tr key={proposal.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">{proposal.title}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{proposal.club}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{proposal.club_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{proposal.date}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded ${getStatusBadge(proposal.status)}`}>{proposal.status}</span>
+                    <span className={`px-3 py-1 rounded-full font-medium ${getStatusBadge(proposal.status)}`}>
+                      {proposal.status}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap space-x-2">
                     <Link href={`/admin/event-proposals/${proposal.id}`}>
                       <button className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                        <i className="fas fa-eye mr-1"></i> Review
+                        Review
                       </button>
                     </Link>
-                    <button className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700">
-                      <i className="fas fa-trash mr-1"></i> Delete
-                    </button>
                   </td>
                 </tr>
               ))

@@ -1,119 +1,150 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-export default function EventProposalDetailsPage() {
+interface Proposal {
+  id: string;
+  title: string;
+  club_name: string;
+  date: string;
+  description?: string;
+  status: "Pending" | "Approved" | "Rejected";
+}
+
+export default function ProposalPage() {
   const { id } = useParams();
+  const router = useRouter();
 
-  const proposal = {
-    title: "AI Bootcamp",
-    club: "Tech Club",
-    date: "Oct 15, 2023",
-    status: "Pending",
-    description: "An intensive bootcamp on AI and Machine Learning for students.",
-    documents: [
-      { name: "Proposal.pdf", url: "#" },
-      { name: "Budget.xlsx", url: "#" },
-    ],
-  };
+  const isNew = id === "new";
 
-  const [remarks, setRemarks] = useState("");
-  const [status, setStatus] = useState(proposal.status);
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [title, setTitle] = useState("");
+  const [clubName, setClubName] = useState("");
+  const [date, setDate] = useState("");
+  const [description, setDescription] = useState("");
 
-  const handleApprove = () => {
-    if (!remarks.trim()) return alert("Please add remarks before approving.");
-    setStatus("Approved");
-    alert("Proposal approved. Event created!");
-  };
+  // ✅ Fetch existing proposal when editing/viewing
+  useEffect(() => {
+    if (isNew) return;
 
-  const handleReject = () => {
-    if (!remarks.trim()) return alert("Please add remarks before rejecting.");
-    setStatus("Rejected");
-    alert("Proposal rejected.");
-  };
+    async function loadProposal() {
+      const res = await fetch(`/api/event-proposals/${id}`);
+      const json = await res.json();
+      if (!res.ok) return alert(json.error);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Approved": return "bg-green-100 text-green-700";
-      case "Pending": return "bg-yellow-100 text-yellow-700";
-      case "Rejected": return "bg-red-100 text-red-700";
-      default: return "";
+      setProposal(json.proposal);
+      setTitle(json.proposal.title);
+      setClubName(json.proposal.club_name);
+      setDate(json.proposal.date);
+      setDescription(json.proposal.description || "");
     }
-  };
+
+    loadProposal();
+  }, [id, isNew]);
+
+  // ✅ Handle new proposal submission
+  async function handleSubmit(e: any) {
+    e.preventDefault();
+    const res = await fetch(`/api/event-proposals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, club_name: clubName, date, description }),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      alert("Proposal submitted!");
+      router.push("/admin/event-proposals");
+    } else {
+      alert(data.error);
+    }
+  }
+
+  if (!isNew && !proposal)
+    return <div className="p-6">Loading...</div>;
 
   return (
-    <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6 space-y-6">
-      {/* Header */}
-      <header className="bg-white shadow-sm px-6 py-4 flex justify-between items-center rounded-xl">
-        <h1 className="text-2xl font-bold text-gray-800">{proposal.title}</h1>
-        <span className={`px-3 py-1 rounded-full font-medium ${getStatusBadge(status)}`}>
-          {status}
-        </span>
-      </header>
+    <div className="p-6 bg-[#F4EDE5] min-h-screen">
+      <div className="bg-white p-6 rounded-xl shadow-md max-w-xl mx-auto space-y-4">
+        <h2 className="text-2xl font-bold">
+          {isNew ? "Submit New Proposal" : "Review Proposal"}
+        </h2>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Proposal Info */}
-        <div className="bg-white rounded-xl shadow-md">
-          <div className="bg-indigo-700 px-6 py-4 text-white font-semibold flex items-center rounded-t-xl">
-            <i className="fas fa-file-alt mr-2"></i> Proposal Information
-          </div>
-          <div className="p-6 space-y-2">
-            <p><strong>Title:</strong> {proposal.title}</p>
-            <p><strong>Club:</strong> {proposal.club}</p>
-            <p><strong>Date:</strong> {proposal.date}</p>
-            <p><strong>Description:</strong> {proposal.description}</p>
-          </div>
-        </div>
-
-        {/* Attached Documents */}
-        <div className="bg-white rounded-xl shadow-md">
-          <div className="bg-indigo-700 px-6 py-4 text-white font-semibold flex items-center rounded-t-xl">
-            <i className="fas fa-paperclip mr-2"></i> Attached Documents
-          </div>
-          <div className="p-6 flex flex-col gap-3">
-            {proposal.documents.map((doc, idx) => (
-              <a
-                key={idx}
-                href={doc.url}
-                target="_blank"
-                className="flex items-center px-4 py-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-              >
-                <i className="fas fa-file mr-3 text-gray-600"></i> {doc.name}
-              </a>
-            ))}
-          </div>
-        </div>
-
-        {/* Review & Action */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-md">
-          <div className="bg-indigo-700 px-6 py-4 text-white font-semibold flex items-center rounded-t-xl">
-            <i className="fas fa-check-circle mr-2"></i> Review & Action
-          </div>
-          <div className="p-6 space-y-4">
-            <textarea
-              placeholder="Add remarks before approving/rejecting..."
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 resize-none h-28"
+        {isNew ? (
+          // ✅ New Proposal Form
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input
+              className="w-full border p-2 rounded"
+              placeholder="Event Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
             />
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={handleApprove}
-                className="px-5 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
-              >
-                <i className="fas fa-check mr-2"></i> Approve & Create Event
+
+            <input
+              className="w-full border p-2 rounded"
+              placeholder="Club Name"
+              value={clubName}
+              onChange={(e) => setClubName(e.target.value)}
+              required
+            />
+
+            <input
+              type="date"
+              className="w-full border p-2 rounded"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+            />
+
+            <textarea
+              className="w-full border p-2 rounded"
+              placeholder="Event Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+
+            <button className="bg-indigo-600 text-white px-4 py-2 rounded w-full">
+              Submit
+            </button>
+          </form>
+        ) : (
+          // ✅ Display Proposal Details (Review Mode)
+          <div className="space-y-3">
+            <p><b>Title:</b> {proposal?.title}</p>
+            <p><b>Club:</b> {proposal?.club_name}</p>
+            <p><b>Date:</b> {proposal?.date}</p>
+            <p><b>Description:</b> {proposal?.description}</p>
+            <p><b>Status:</b> {proposal?.status}</p>
+
+            <div className="flex gap-4 pt-4">
+              <button className="bg-green-600 text-white px-4 py-2 rounded"
+                onClick={async () => {
+                  await fetch(`/api/event-proposals/${id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ status: "Approved" }),
+                  });
+                  alert("Approved!");
+                  router.refresh();
+                }}>
+                Approve
               </button>
-              <button
-                onClick={handleReject}
-                className="px-5 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center"
-              >
-                <i className="fas fa-times mr-2"></i> Reject Proposal
+
+              <button className="bg-red-600 text-white px-4 py-2 rounded"
+                onClick={async () => {
+                  await fetch(`/api/event-proposals/${id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ status: "Rejected" }),
+                  });
+                  alert("Rejected!");
+                  router.refresh();
+                }}>
+                Reject
               </button>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
