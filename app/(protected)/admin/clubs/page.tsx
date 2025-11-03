@@ -150,26 +150,26 @@ export default function ClubsPage() {
             <i className="fas fa-users mr-2"></i> All Clubs
           </h2>
         </div>
-        <div className="p-6">
+        <div className="">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Department</th>
-                <th>Email</th>
-                <th>Actions</th>
+                {/* <th>ID</th> */}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" >Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {clubs.map((club) => (
-                <tr key={club.id}>
-                  <td>{club.id}</td>
-                  <td>{club.name}</td>
-                  <td>{club.description}</td>
-                  <td>{club.department}</td>
-                  <td>{club.email}</td>
+                <tr key={club.id} className="hover:bg-gray-50">
+                  {/* <td>{club.id}</td> */}
+                  <td className="px-6 py-4 whitespace-nowrap">{club.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{club.description}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{club.department}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{club.email}</td>
                   <td className="space-x-2">
                     <Link href={`/admin/clubs/${club.id}`}>
                       <button className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">Edit</button>
