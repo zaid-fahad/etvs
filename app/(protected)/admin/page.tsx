@@ -12,16 +12,42 @@ interface User {
 
 interface Proposal {
   id: string;
+  club_id: string;
   title: string;
-  club: string;
+  description: string | null;
+  requested_budget: number | null;
+  attachments: {
+    url: string;
+    name: string;
+  }[];
   status: string;
+  remarks: {
+    text: string;
+    added_by: string;
+    created_at: string;
+  }[] | null;
+  created_by: string;
+  created_at: string;
+  date: string;
+
+  // joined relation
+  clubs?: {
+    name: string;
+  };
+
+  // computed / fallback
+  club_name?: string;
 }
 
-interface Event {
-  id: string;
-  title: string;
-  club: string;
-  status: string;
+
+async function safeJson(res: Response) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error("Invalid JSON from API:", text);
+    return {};
+  }
 }
 
 export default function DashboardPage() {
@@ -31,29 +57,28 @@ export default function DashboardPage() {
     activeStudents: 0,
     recentAttendance: "0%",
   });
+
   const [recentEvents, setRecentEvents] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
+    async function loadDashboard() {
       try {
-        // Fetch users
-        const usersRes = await fetch("/api/user");
-        const usersData = await usersRes.json();
-        const users: User[] = usersData.users || [];
-        const clubs = users.filter((u) => u.role === "club");
-        const students = users.filter((u) => u.role === "student");
+        const [usersRes, clubsRes, proposalsRes] = await Promise.all([
+          fetch("/api/user"),
+          fetch("/api/clubs" ),
+          fetch("/api/event-proposals"),
+        ]);
 
-        // Fetch event proposals
-        const proposalsRes = await fetch("/api/event-proposals");
-        const proposalsData = await proposalsRes.json();
-        const proposals: Proposal[] = proposalsData.proposals || [];
-        const pendingEvents = proposals.filter((p) => p.status === "Pending");
+        const { users = [] } = await safeJson(usersRes);
+        const { clubs = [] } = await safeJson(clubsRes);
+        const { proposals = [] } = await safeJson(proposalsRes);
 
-        // Fetch events (optional if needed)
-        const eventsRes = await fetch("/api/events");
-        const eventsData = await eventsRes.json();
-        const events: Event[] = eventsData.events || [];
+        
+
+        // filter students and pending proposals
+        const students = users.filter((u: User) => u.role === "student");
+        const pendingEvents = proposals.filter( (p: Proposal)=> p.status === "Pending");
 
         setStats({
           totalClubs: clubs.length,
@@ -64,13 +89,13 @@ export default function DashboardPage() {
 
         setRecentEvents(proposals.slice(0, 5));
       } catch (err) {
-        console.error("Error fetching dashboard data:", err);
+        console.error("Dashboard fetch failed", err);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchData();
+    loadDashboard();
   }, []);
 
   const getStatusBadge = (status: string) => {
@@ -98,9 +123,7 @@ export default function DashboardPage() {
     <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6 space-y-6">
       <header className="bg-white shadow-sm rounded-xl">
         <div className="px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Dashboard Overview
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
         </div>
       </header>
 
@@ -108,73 +131,51 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-md p-6">
           <p className="text-gray-500">Total Clubs</p>
-          <h3 className="text-3xl font-bold text-indigo-600">
-            {stats.totalClubs}
-          </h3>
+          <h3 className="text-3xl font-bold text-indigo-600">{stats.totalClubs}</h3>
         </div>
         <div className="bg-white rounded-xl shadow-md p-6">
           <p className="text-gray-500">Pending Events</p>
-          <h3 className="text-3xl font-bold text-yellow-600">
-            {stats.pendingEvents}
-          </h3>
+          <h3 className="text-3xl font-bold text-yellow-600">{stats.pendingEvents}</h3>
         </div>
         <div className="bg-white rounded-xl shadow-md p-6">
           <p className="text-gray-500">Active Students</p>
-          <h3 className="text-3xl font-bold text-green-600">
-            {stats.activeStudents}
-          </h3>
+          <h3 className="text-3xl font-bold text-green-600">{stats.activeStudents}</h3>
         </div>
         <div className="bg-white rounded-xl shadow-md p-6">
           <p className="text-gray-500">Recent Attendance</p>
-          <h3 className="text-3xl font-bold text-blue-600">
-            {stats.recentAttendance}
-          </h3>
+          <h3 className="text-3xl font-bold text-blue-600">{stats.recentAttendance}</h3>
         </div>
       </div>
 
       {/* Recent Event Proposals */}
       <div className="bg-white rounded-xl shadow-md overflow-x-auto">
         <div className="bg-indigo-700 px-6 py-4 rounded-t-xl">
-          <h2 className="text-xl font-semibold text-white flex items-center">
-            <i className="fas fa-file-alt mr-2"></i> Recent Event Proposals
-          </h2>
+          <h2 className="text-xl font-semibold text-white">Recent Event Proposals</h2>
         </div>
-        <div className="p-6">
+        <div className="">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Club
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Club</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {recentEvents.map((event) => (
                 <tr key={event.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">{event.title}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{event.club}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{event.club_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 rounded ${getStatusBadge(
-                        event.status
-                      )}`}
-                    >
+                    <span className={`px-2 py-1 rounded ${getStatusBadge(event.status)}`}>
                       {event.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap space-x-2">
                     <Link href={`/admin/event-proposals/${event.id}`}>
                       <button className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                        <i className="fas fa-eye mr-1"></i> Review
+                        Review
                       </button>
                     </Link>
                   </td>
