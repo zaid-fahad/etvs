@@ -1,3 +1,4 @@
+// app/(protected)/club/page.tsx
 "use client";
 
 import Link from "next/link";
@@ -54,7 +55,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalClubs: 0,
     pendingEvents: 0,
-    activeStudents: 0,
+    // activeStudents: 0,
     recentAttendance: "0%",
   });
 
@@ -64,26 +65,25 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const [usersRes, clubsRes, proposalsRes] = await Promise.all([
-          fetch("/api/user"),
+        const [ clubsRes, proposalsRes] = await Promise.all([
           fetch("/api/clubs" ),
           fetch("/api/event-proposals"),
         ]);
 
-        const { users = [] } = await safeJson(usersRes);
+        // const { users = [] } = await safeJson(usersRes);
         const { clubs = [] } = await safeJson(clubsRes);
         const { proposals = [] } = await safeJson(proposalsRes);
 
         
 
         // filter students and pending proposals
-        const students = users.filter((u: User) => u.role === "student");
+        // const students = users.filter((u: User) => u.role === "student");
         const pendingEvents = proposals.filter( (p: Proposal)=> p.status === "Pending");
 
         setStats({
           totalClubs: clubs.length,
           pendingEvents: pendingEvents.length,
-          activeStudents: students.length,
+          // activeStudents: students.length,
           recentAttendance: "87%", // placeholder
         });
 
@@ -137,10 +137,10 @@ export default function DashboardPage() {
           <p className="text-gray-500">Pending Events</p>
           <h3 className="text-3xl font-bold text-yellow-600">{stats.pendingEvents}</h3>
         </div>
-        <div className="bg-white rounded-xl shadow-md p-6">
+        {/* <div className="bg-white rounded-xl shadow-md p-6">
           <p className="text-gray-500">Active Students</p>
           <h3 className="text-3xl font-bold text-green-600">{stats.activeStudents}</h3>
-        </div>
+        </div> */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <p className="text-gray-500">Recent Attendance</p>
           <h3 className="text-3xl font-bold text-blue-600">{stats.recentAttendance}</h3>
