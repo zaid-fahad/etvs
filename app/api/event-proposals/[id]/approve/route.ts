@@ -1,6 +1,7 @@
 // app/api/event-proposals/[id]/approve/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { create } from "domain";
 
 export async function POST(
   req: Request,
@@ -35,7 +36,8 @@ export async function POST(
       club_id: updatedProposal.club_id,
       description: updatedProposal.description,
       date: updatedProposal.date,
-      certificate_bg: updatedProposal.certificate_bg || null,
+      certificate_bg_url: updatedProposal.certificate_bg || null,
+      created_at: new Date().toISOString(),
     });
     if (insertError) {
       console.error("Error creating event:", insertError);

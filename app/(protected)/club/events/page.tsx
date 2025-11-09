@@ -122,16 +122,16 @@ export default function EventsPage() {
       {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 rounded-xl flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Events Management</h1>
-        <button
+        {/* <button
           onClick={() => setFormVisible(!formVisible)}
           className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
         >
           {formVisible ? "Close Form" : "Create Event"}
-        </button>
+        </button> */}
       </header>
 
       {/* Create Event Form */}
-      {formVisible && (
+      {/* {formVisible && (
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
           <div className="bg-indigo-700 px-6 py-4">
             <h2 className="text-xl font-semibold text-white flex items-center">
@@ -193,7 +193,7 @@ export default function EventsPage() {
             </form>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-md p-6 flex flex-col md:flex-row gap-4 items-center">
@@ -208,7 +208,7 @@ export default function EventsPage() {
           <option value="Rejected">Rejected</option>
         </select>
 
-        <select
+        {/* <select
           value={filterClub}
           onChange={(e) => setFilterClub(e.target.value)}
           className="w-full md:w-1/4 px-4 py-2 border rounded-lg"
@@ -217,7 +217,7 @@ export default function EventsPage() {
           {clubs.map((club) => (
             <option key={club.id} value={club.id}>{club.name}</option>
           ))}
-        </select>
+        </select> */}
 
         <input
           placeholder="Search by title..."
@@ -233,7 +233,7 @@ export default function EventsPage() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Title</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Club</th>
+              {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Club</th> */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Actions</th>
@@ -245,7 +245,7 @@ export default function EventsPage() {
               filteredEvents.map((event) => (
                 <tr key={event.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">{event.title}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{event.clubs?.name}</td>
+                  {/* <td className="px-6 py-4 whitespace-nowrap">{event.clubs?.name}</td> */}
                   <td className="px-6 py-4 whitespace-nowrap">{event.date}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 rounded ${getStatusBadge(event.status || "Pending")}`}>
@@ -253,15 +253,15 @@ export default function EventsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                    <Link href={`/admin/events/${event.id}`}>
+                    <Link href={`/club/events/${event.id}`}>
                       <button className="px-3 py-1 bg-blue-600 text-white rounded-md">View</button>
                     </Link>
-                    <button
+                    {/* <button
                       onClick={() => handleDelete(event.id)}
                       className="px-3 py-1 bg-red-600 text-white rounded-md"
                     >
                       Delete
-                    </button>
+                    </button> */}
                   </td>
                 </tr>
               ))

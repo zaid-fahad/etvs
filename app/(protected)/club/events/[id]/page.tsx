@@ -104,7 +104,7 @@ export default function EventDetailsPage() {
           <div className="p-6 space-y-2">
             <p><strong>Title:</strong> {event.title}</p>
             <p><strong>Date:</strong> {event.date}</p>
-            <p><strong>Club:</strong> {event.club_name}</p>
+            {/* <p><strong>Club:</strong> {event.club_name}</p> */}
             <p>
               <strong>Status:</strong>{" "}
               <span className={`px-2 py-1 rounded ${getStatusBadge(event.status)}`}>
@@ -121,11 +121,11 @@ export default function EventDetailsPage() {
           </div>
           <div className="p-6 flex flex-wrap gap-3">
             <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-              <i className="fas fa-check mr-1"></i> Approve
+              <i className="fas fa-check mr-1"></i> Generate Certificate
             </button>
-            <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+            {/* <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
               <i className="fas fa-times mr-1"></i> Reject
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
@@ -155,6 +155,12 @@ export default function EventDetailsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full md:w-1/3 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
           />
+          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              <i className="fas fa-check mr-1"></i> Add Attendee
+            </button>
+            <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              <i className="fas fa-check mr-1"></i> Update Attendee Status
+            </button>
         </div>
 
         <div className="p-6 overflow-x-auto">

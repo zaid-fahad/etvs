@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const supabase = await createClient();
-  const { id } = params;
+  const { id } = await params;
 
   const { data, error } = await supabase.from("events").select("*").eq("id", id).single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -23,7 +23,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const supabase = await createClient();
-  const { id } = params;
+  const { id } = await params;
 
   const { error } = await supabase.from("events").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
