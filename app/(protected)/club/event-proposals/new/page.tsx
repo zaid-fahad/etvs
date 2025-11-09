@@ -16,43 +16,71 @@ interface Attachment {
 export default function NewEventProposalPage() {
   const router = useRouter();
 
-  const [clubs, setClubs] = useState<Club[]>([]);
+  const [club, setClub] = useState<Club | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [budget, setBudget] = useState("");
-    const [date, setDate] = useState(""); 
-
-  const [clubId, setClubId] = useState("");
+  const [date, setDate] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([{ name: "", url: "" }]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch clubs for dropdown
   useEffect(() => {
-    async function fetchClubs() {
+    async function fetchProfileAndClub() {
       try {
-        const res = await fetch("/api/clubs");
-        const json = await res.json();
-        setClubs(json.clubs || []);
-      } catch (e) {
-        console.error(e);
+        // 1️⃣ Fetch profile to get club_id
+        const profileRes = await fetch("/api/auth/user");
+        const profileData = await profileRes.json();
+
+        if (!profileData?.profile?.club_id) {
+          setClub(null);
+          setLoading(false);
+          return;
+        }
+
+        const clubId = profileData.profile.club_id;
+
+        // 2️⃣ Fetch club details using club_id
+        const clubRes = await fetch(`/api/clubs/${clubId}`);
+        const clubData = await clubRes.json();
+
+        if (clubData?.club) {
+          setClub({
+            id: clubData.club.id,
+            name: clubData.club.name,
+          });
+        } else {
+          setClub({ id: clubId, name: "Unknown Club" });
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile or club:", err);
       } finally {
         setLoading(false);
       }
     }
-    fetchClubs();
+
+    fetchProfileAndClub();
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!club?.id) {
+      alert("You are not associated with any club.");
+      return;
+    }
 
     const res = await fetch("/api/event-proposals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, club_id: clubId, attachments, date }),
+      body: JSON.stringify({
+        title,
+        description,
+        club_id: club.id,
+        attachments,
+        date,
+      }),
     });
 
     if (res.ok) {
-      router.push("/admin/event-proposals");
+      router.push("/club/event-proposals");
     } else {
       const err = await res.json();
       alert("Error: " + (err.error || "Unknown"));
@@ -74,7 +102,7 @@ export default function NewEventProposalPage() {
     setAttachments(updated);
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <div className="p-6">Loading profile and club info...</div>;
 
   return (
     <div className="min-h-screen bg-[#F4EDE5] p-6">
@@ -104,18 +132,6 @@ export default function NewEventProposalPage() {
             />
           </div>
 
-          {/* Budget */}
-          {/* <div>
-            <label className="block text-sm font-medium mb-1">Budget</label>
-            <input
-              type="number"
-              className="w-full border p-2 rounded"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              required
-            />
-          </div> */}
-
           {/* Date */}
           <div>
             <label className="block font-medium mb-1">Date</label>
@@ -128,22 +144,14 @@ export default function NewEventProposalPage() {
             />
           </div>
 
-          {/* Club Dropdown */}
+          {/* Club (auto-filled) */}
           <div>
             <label className="block text-sm font-medium mb-1">Club</label>
-            <select
-              className="w-full border p-2 rounded"
-              value={clubId}
-              onChange={(e) => setClubId(e.target.value)}
-              required
-            >
-              <option value="">Select club</option>
-              {clubs.map((club) => (
-                <option key={club.id} value={club.id}>
-                  {club.name}
-                </option>
-              ))}
-            </select>
+            <input
+              className="w-full border p-2 rounded bg-gray-100"
+              value={club ? `${club.name}` : "No club assigned"}
+              disabled
+            />
           </div>
 
           {/* Attachments */}
@@ -186,7 +194,7 @@ export default function NewEventProposalPage() {
             type="submit"
             className="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700"
           >
-            Create Proposal
+            Submit Proposal
           </button>
         </form>
       </div>

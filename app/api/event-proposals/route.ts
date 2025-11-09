@@ -5,22 +5,50 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET() {
   const supabase = await createClient();
 
-  // Select all fields from event_proposals and also fetch club name
-  const { data, error } = await supabase
+  // Get authenticated user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  // Fetch user profile
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, role, club_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile) {
+    return NextResponse.json({ error: "Failed to fetch user profile" }, { status: 400 });
+  }
+
+  let query = supabase
     .from("event_proposals")
-    .select(`
+    .select(
+      `
       *,
       clubs:club_id (
         name
       )
-    `)
+    `
+    )
     .order("created_at", { ascending: false });
+
+  // If user is not admin, restrict to their club
+  if (profile.role !== "admin") {
+    query = query.eq("club_id", profile.club_id);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // Flatten club name for easier use on the frontend
+  // Flatten club name for easier frontend use
   const proposals = data.map((p: any) => ({
     ...p,
     club_name: p.clubs?.name || "",
@@ -31,7 +59,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const supabase = await createClient();
-  const user = (await supabase.auth.getUser()).data.user;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -40,27 +71,21 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { title, description, club_id, attachments, date } = body;
 
-  // Validate fields
-  if (!title || !description  || !club_id) {
-    return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 }
-    );
+  if (!title || !description || !club_id) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  // Insert proposal
   const { data, error } = await supabase
     .from("event_proposals")
     .insert([
       {
         title,
         description,
-        // budget,
         club_id,
         attachments: attachments || [],
         status: "Pending",
         created_by: user.id,
-        date: date,
+        date,
       },
     ])
     .select()

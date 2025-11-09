@@ -134,7 +134,7 @@ export default function EventProposalsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                    <Link href={`/admin/event-proposals/${proposal.id}`}>
+                    <Link href={`/club/event-proposals/${proposal.id}`}>
                       <button className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                         Review
                       </button>

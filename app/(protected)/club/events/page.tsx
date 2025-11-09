@@ -1,4 +1,4 @@
-//admin/events/page.tsx
+//club/events/page.tsx
 
 "use client";
 

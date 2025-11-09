@@ -196,7 +196,8 @@ export default function EventProposalDetailsPage() {
               value={newRemark}
               onChange={(e) => setNewRemark(e.target.value)}
             />
-            <select
+            {/* <select
+              disabled
               className="border p-2 rounded w-full"
               value={status}
               onChange={(e) => setStatus(e.target.value as Proposal["status"])}
@@ -206,7 +207,7 @@ export default function EventProposalDetailsPage() {
               <option value="Rejected">Rejected</option>
               <option value="Draft">Draft</option>
               <option value="OnHold">OnHold</option>
-            </select>
+            </select> */}
 
             <button
               onClick={handleSave}

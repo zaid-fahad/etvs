@@ -14,7 +14,6 @@ interface Proposal {
   club_id: string;
   club_name: string;
   description: string;
-  budget: string;
   date: string;
   attachments: Attachment[];
 }
@@ -29,40 +28,51 @@ export default function EditEventProposalPage() {
   const router = useRouter();
 
   const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [clubs, setClubs] = useState<Club[]>([]);
+  const [club, setClub] = useState<Club | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [budget, setBudget] = useState("");
-  const [clubId, setClubId] = useState("");
-  const [date, setDate] = useState(""); 
+  const [date, setDate] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([{ name: "", url: "" }]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch proposal + clubs
+  // Fetch proposal and user club
   useEffect(() => {
     async function fetchData() {
       try {
-        const [pRes, cRes] = await Promise.all([
-          fetch(`/api/event-proposals/${id}`),
-          fetch("/api/clubs")
-        ]);
-
+        // 1️⃣ Fetch event proposal
+        const pRes = await fetch(`/api/event-proposals/${id}`);
         const pJson = await pRes.json();
-        const cJson = await cRes.json();
 
         if (pJson.proposal) {
           setProposal(pJson.proposal);
           setTitle(pJson.proposal.title || "");
           setDescription(pJson.proposal.description || "");
-          // setBudget(pJson.proposal.budget || "");
-          setClubId(pJson.proposal.club_id || "");
           setDate(pJson.proposal.date || "");
           setAttachments(pJson.proposal.attachments || [{ name: "", url: "" }]);
         }
 
-        setClubs(cJson.clubs || []);
+        // 2️⃣ Fetch logged-in user’s club from profile
+        const userRes = await fetch("/api/auth/user");
+        const userData = await userRes.json();
+
+        if (userData.profile?.club_id) {
+          const clubId = userData.profile.club_id;
+          const clubRes = await fetch(`/api/clubs/${clubId}`);
+          const clubData = await clubRes.json();
+
+          if (clubData?.club) {
+            setClub({
+              id: clubData.club.id,
+              name: clubData.club.name,
+            });
+          } else {
+            setClub({ id: clubId, name: "Unknown Club" });
+          }
+        } else {
+          setClub(null);
+        }
       } catch (e) {
-        console.error(e);
+        console.error("Error fetching data:", e);
       } finally {
         setLoading(false);
       }
@@ -84,18 +94,30 @@ export default function EditEventProposalPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
+    if (!club?.id) {
+      alert("You are not associated with any club.");
+      return;
+    }
+
     const res = await fetch(`/api/event-proposals/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, club_id: clubId, date, attachments }),
+      body: JSON.stringify({
+        title,
+        description,
+        club_id: club.id,
+        date,
+        attachments,
+      }),
     });
 
-    if (res.ok) router.push(`/admin/event-proposals/${id}`);
+    if (res.ok) router.push(`/club/event-proposals/${id}`);
     else alert("Error updating proposal");
   };
 
   const handleCancel = () => {
-    router.push(`/admin/event-proposals/${id}`);
+    router.push(`/club/event-proposals/${id}`);
   };
 
   if (loading) return <div className="p-6">Loading...</div>;
@@ -129,19 +151,6 @@ export default function EditEventProposalPage() {
             />
           </div>
 
-          {/* Budget */}
-          {/* <div>
-            <label className="block font-medium mb-1">Budget</label>
-            <input
-              type="number"
-              className="w-full border p-2 rounded"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              placeholder="Budget"
-              required
-            />
-          </div> */}
-
           {/* Date */}
           <div>
             <label className="block font-medium mb-1">Date</label>
@@ -154,20 +163,14 @@ export default function EditEventProposalPage() {
             />
           </div>
 
-          {/* Club Dropdown */}
+          {/* Club (auto-filled from profile) */}
           <div>
             <label className="block font-medium mb-1">Club</label>
-            <select
-              className="w-full border p-2 rounded"
-              value={clubId || ""}
-              onChange={(e) => setClubId(e.target.value)}
-              required
-            >
-              <option value="">Select club</option>
-              {clubs.map((club) => (
-                <option key={club.id} value={club.id}>{club.name}</option>
-              ))}
-            </select>
+            <input
+              className="w-full border p-2 rounded bg-gray-100"
+              value={club ? `${club.name}` : "No club assigned"}
+              disabled
+            />
           </div>
 
           {/* Attachments */}
@@ -207,7 +210,6 @@ export default function EditEventProposalPage() {
 
           {/* Save + Cancel Buttons */}
           <div className="flex gap-4">
-
             <button
               type="button"
               onClick={handleCancel}
