@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 // ✅ GET: Fetch all attendees for a specific event
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const supabase = await createClient();
-  const { id } = params;
+  const { id } = await params;
 
   const { data, error } = await supabase
     .from("event_attendance")
