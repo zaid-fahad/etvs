@@ -79,86 +79,87 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 // }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  // Assuming createClient() works and returns a valid Supabase client
-  const supabase = await createClient(); 
-  const { id } = await params; // params is already destructured above, just use id
+  const supabase = await createClient();
+  const { id } = params;
 
   try {
-    // parse multipart/form-data
-    const formData = await req.formData();
-    const textX = formData.get("textX") as string | null;
-    const textY = formData.get("textY") as string | null;
-    const fontSize = formData.get("fontSize") as string | null;
-    const fontColor = formData.get("fontColor") as string | null;
-    const qrX = formData.get("qrX") as string | null;
-    const qrY = formData.get("qrY") as string | null;
-    const qrSize = formData.get("qrSize") as string | null;
-    // This correctly returns true if the value is "true", and false otherwise (including "false" or null)
-    const isQrTransparent = formData.get("qrTransparent") === "true"; 
-    const templateFile = formData.get("template") as File | null;
+    const body = await req.json(); // parse JSON
+    const template = body.template;
 
-    let certificate_template: any = {};
-    let existingSettings: any = {};
+    if (!template || !template.file) {
+      return NextResponse.json(
+        { error: "Template file (base64) is required" },
+        { status: 400 }
+      );
+    }
 
-    // 1. Fetch existing template *without* .single() for safer initial check
-    const { data: existingEvent, error: existingError } = await supabase
+    // Fetch existing event
+    const { data: existingEvent, error: fetchError } = await supabase
       .from("events")
       .select("certificate_template")
       .eq("id", id)
-      .limit(1); // Use limit(1) instead of single() for safer existence check
+      .single();
 
-    if (existingError) {
-      return NextResponse.json({ error: existingError.message }, { status: 404 });
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 404 });
     }
 
-    if (existingEvent && existingEvent.length > 0 && existingEvent[0].certificate_template) {
-        certificate_template = existingEvent[0].certificate_template;
-        existingSettings = certificate_template.settings || {};
-    }
+    const existingTemplate = existingEvent?.certificate_template || {};
+    const existingSettings = existingTemplate.settings || {};
 
-
-    if (templateFile && templateFile.size > 0) { // Check size for an actual file
-      // Convert file to base64
-      const arrayBuffer = await templateFile.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      certificate_template.file = base64;
-      certificate_template.name = templateFile.name;
-    }
-
-    // 2. Corrected settings update logic, especially for booleans and nulls
-    certificate_template.settings = {
-      textX: textX !== null ? Number(textX) : existingSettings.textX,
-      textY: textY !== null ? Number(textY) : existingSettings.textY,
-      fontSize: fontSize !== null ? Number(fontSize) : existingSettings.fontSize,
-      fontColor: fontColor !== null ? String(fontColor) : existingSettings.fontColor,
-      qrSize: qrSize !== null ? Number(qrSize) : existingSettings.qrSize,
-      qrX: qrX !== null ? Number(qrX) : existingSettings.qrX,
-      qrY: qrY !== null ? Number(qrY) : existingSettings.qrY,
-      // For boolean, explicitly check if the key was present in the form data
-      // For simplicity, we use the boolean from isQrTransparent if the field was in the request
-      // (The original code determines isQrTransparent based on if "qrTransparent"==="true", which is a form of presence check)
-      qrTransparent: formData.has("qrTransparent") ? isQrTransparent : existingSettings.qrTransparent ?? false,
+    // Explicitly build new settings object
+    const newSettings = {
+      textX: (template.settings && template.settings.textX != null)
+        ? Number(template.settings.textX)
+        : (existingSettings.textX != null ? existingSettings.textX : 0),
+      textY: (template.settings && template.settings.textY != null)
+        ? Number(template.settings.textY)
+        : (existingSettings.textY != null ? existingSettings.textY : 0),
+      fontSize: (template.settings && template.settings.fontSize != null)
+        ? Number(template.settings.fontSize)
+        : (existingSettings.fontSize != null ? existingSettings.fontSize : 12),
+      fontColor: (template.settings && template.settings.fontColor != null)
+        ? String(template.settings.fontColor)
+        : (existingSettings.fontColor != null ? existingSettings.fontColor : "#000000"),
+      qrSize: (template.settings && template.settings.qrSize != null)
+        ? Number(template.settings.qrSize)
+        : (existingSettings.qrSize != null ? existingSettings.qrSize : 100),
+      qrX: (template.settings && template.settings.qrX != null)
+        ? Number(template.settings.qrX)
+        : (existingSettings.qrX != null ? existingSettings.qrX : 0),
+      qrY: (template.settings && template.settings.qrY != null)
+        ? Number(template.settings.qrY)
+        : (existingSettings.qrY != null ? existingSettings.qrY : 0),
+      qrTransparent: (template.settings && template.settings.qrTransparent != null)
+        ? Boolean(template.settings.qrTransparent)
+        : (existingSettings.qrTransparent != null ? existingSettings.qrTransparent : false),
     };
 
-    // 3. Final update *with* .single() to ensure the single updated row is returned
-    // console.log("id", id);
+    // Build final certificate_template object explicitly
+    const newTemplate = {
+      file: template.file,
+      name: template.name != null ? template.name : (existingTemplate.name != null ? existingTemplate.name : "template.png"),
+      settings: newSettings,
+    };
+
     const { data, error } = await supabase
       .from("events")
-      .update({ certificate_template })
+      .update({ certificate_template: newTemplate })
       .eq("id", id)
       .select()
       .single();
 
     if (error) {
-      // If the final update fails to find the row, the error is likely the .single() issue again
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    
+
     return NextResponse.json({ event: data });
   } catch (err: any) {
-    console.error("Internal Server Error:", err);
-    // Catch generic errors like file conversion failure
-    return NextResponse.json({ error: err.message || "Failed to update certificate template" }, { status: 500 });
+    console.error("Failed to update certificate template:", err);
+    return NextResponse.json(
+      { error: err.message || "Failed to update certificate template" },
+      { status: 500 }
+    );
   }
 }
 

@@ -575,29 +575,39 @@ export default function EventDetailsPage() {
           onClose={() => setShowDesigner(false)}
           onSave={async (settings) => {
             try {
-              const formData = new FormData();
-              formData.append("textX", String(settings.textX));
-              formData.append("textY", String(settings.textY));
-              formData.append("fontSize", String(settings.fontSize));
-              formData.append("fontColor", settings.fontColor);
-              formData.append("qrSize", String(settings.qrSize));
-              formData.append("qrX", String(settings.qrX ?? 0));
-              formData.append("qrY", String(settings.qrY ?? 0));
-              formData.append(
-                "qrTransparent",
-                settings.qrTransparent ? "true" : "false"
-              );
-              formData.append("template", certificateTemplate);
+              // Convert file to base64
+              const arrayBuffer = await certificateTemplate.arrayBuffer();
+              const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+              const payload = {
+                template: {
+                  file: base64,
+                  name: certificateTemplate.name,
+                  settings: {
+                    textX: settings.textX,
+                    textY: settings.textY,
+                    fontSize: settings.fontSize,
+                    fontColor: settings.fontColor,
+                    qrX: settings.qrX ?? 0,
+                    qrY: settings.qrY ?? 0,
+                    qrSize: settings.qrSize,
+                    qrTransparent: settings.qrTransparent,
+                  },
+                },
+              };
 
               const res = await fetch(`/api/events/${id}`, {
                 method: "PATCH",
-                body: formData,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
               });
+
               if (!res.ok)
                 throw new Error("Failed to save certificate settings");
-              const data = await res.json();
 
+              const data = await res.json();
               console.log("Saved certificate settings:", data.event);
+
               setCertificateSettings(settings);
               setShowDesigner(false);
             } catch (err) {
