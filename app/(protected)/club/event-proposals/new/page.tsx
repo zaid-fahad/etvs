@@ -105,7 +105,7 @@ export default function NewEventProposalPage() {
   if (loading) return <div className="p-6">Loading profile and club info...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F4EDE5] p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6">
         <h1 className="text-xl font-bold mb-4">Create Event Proposal</h1>
 

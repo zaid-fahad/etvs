@@ -123,7 +123,7 @@ export default function EditEventProposalPage() {
   if (loading) return <div className="p-6">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F4EDE5] p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-md p-6">
         <h1 className="text-2xl font-bold mb-4">Edit Event Proposal</h1>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -118,7 +118,7 @@ export default function EventsPage() {
   };
 
   return (
-    <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6 space-y-6">
+    <div className="ml-0 min-h-screen  p-6 space-y-6">
       {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 rounded-xl flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Events Management</h1>

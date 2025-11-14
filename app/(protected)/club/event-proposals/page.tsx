@@ -59,14 +59,14 @@ export default function EventProposalsPage() {
   // ✅ Loading UI before proposals arrive
   if (proposals === null) {
     return (
-      <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6 text-lg">
+      <div className="ml-0 min-h-screen p-6 text-lg">
         Loading proposals...
       </div>
     );
   }
 
   return (
-    <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6 space-y-6">
+    <div className="ml-0 min-h-screen  p-6 space-y-6">
       <header className="bg-white shadow-sm px-6 py-4 rounded-xl flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Event Proposals</h1>
         <Link href="/club/event-proposals/new">

@@ -95,7 +95,7 @@ export default function EventProposalDetailsPage() {
   };
 
   return (
-    <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6">
+    <div className="ml-0 min-h-screen  p-6">
       {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 flex justify-between items-center rounded-xl mb-6">
         <h1 className="text-2xl font-bold text-gray-800">{proposal.title}</h1>

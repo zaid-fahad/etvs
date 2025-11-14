@@ -548,19 +548,19 @@ export default function EventDetailsPage() {
 
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F4EDE5]">
+      <div className="flex items-center justify-center min-h-screen ">
         Loading...
       </div>
     );
   if (!event)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F4EDE5]">
+      <div className="flex items-center justify-center min-h-screen ">
         Event not found
       </div>
     );
 
   return (
-    <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6 space-y-6">
+    <div className="ml-0 min-h-screen  p-6 space-y-6">
       {showAddModal && (
         <AddAttendeeModal
           eventId={id as string}

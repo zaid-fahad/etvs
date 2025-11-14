@@ -67,7 +67,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const handleTogglePasswordForm = () => setShowPasswordForm((prev) => !prev);
 
   return (
-    <div className="flex min-h-screen bg-[#F4EDE5]">
+    <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
       <aside
         className={cn(

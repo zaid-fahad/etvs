@@ -113,14 +113,14 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F4EDE5]">
+      <div className="flex items-center justify-center min-h-screen ">
         <p className="text-gray-700 text-lg">Loading dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="ml-0 min-h-screen bg-[#F4EDE5] p-6 space-y-6">
+    <div className="ml-0 min-h-screen p-6 space-y-6">
       <header className="bg-white shadow-sm rounded-xl">
         <div className="px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
