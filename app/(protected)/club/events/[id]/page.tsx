@@ -497,54 +497,60 @@ export default function EventDetailsPage() {
     }
   };
 
-  const handleGenerateCertificates = async () => {
-    if (!certificateTemplate) {
-      alert("Please upload a certificate template first.");
-      return;
-    }
-    if (!certificateSettings) {
-      alert(
-        "Please set the certificate text position using the designer first."
-      );
-      return;
-    }
-    setGenerating(true);
-    try {
-      const formData = new FormData();
-      formData.append("template", certificateTemplate);
-      formData.append("event_id", String(id));
-      formData.append("x", String(certificateSettings.textX));
-      formData.append("y", String(certificateSettings.textY));
-      formData.append("fontColor", certificateSettings.fontColor);
-      formData.append("fontSize", String(certificateSettings.fontSize));
-      formData.append("qrSize", String(certificateSettings.qrSize));
-      if (certificateSettings.qrX)
-        formData.append("qrX", String(certificateSettings.qrX));
-      if (certificateSettings.qrY)
-        formData.append("qrY", String(certificateSettings.qrY));
-      formData.append(
-        "qrTransparent",
-        certificateSettings.qrTransparent ? "true" : "false"
-      );
+const handleGenerateCertificates = async (attendees: Attendee[] = []) => {
+  if (!certificateTemplate) {
+    alert("Please upload or configure a certificate template first.");
+    return;
+  }
+  if (!certificateSettings) {
+    alert("Please set the certificate text and QR positions first.");
+    return;
+  }
 
-      const res = await fetch(`/api/certificates/generate`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.blob();
+  if (!Array.isArray(attendees) || attendees.length === 0) {
+    alert("Please select at least one attendee.");
+    return;
+  }
 
-      const url = window.URL.createObjectURL(data);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `certificates_event_${id}.zip`;
-      link.click();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to generate certificates");
-    } finally {
-      setGenerating(false);
+  setGenerating(true);
+
+  try {
+    const payload = {
+      event_id: id,
+      attendees: attendees.map((a) => ({
+        id: a.id,
+        name: a.name,
+      })),
+    };
+
+    const res = await fetch(`/api/certificates/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error("API failed");
     }
-  };
+
+    const blob = await res.blob();
+
+    // Download ZIP
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `certificates_event_${id}.zip`;
+    link.click();
+
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to generate certificates");
+  } finally {
+    setGenerating(false);
+  }
+};
 
   if (loading)
     return (
@@ -673,7 +679,7 @@ export default function EventDetailsPage() {
                 Design Certificate
               </button>
               <button
-                onClick={handleGenerateCertificates}
+                onClick={() => handleGenerateCertificates(filteredAttendees)}
                 disabled={
                   generating || !certificateTemplate || !certificateSettings
                 }
