@@ -517,13 +517,9 @@ const handleGenerateCertificates = async (attendees: Attendee[] = []) => {
   try {
     const payload = {
       event_id: id,
-      attendees: attendees.map((a) => ({
-        id: a.id,
-        name: a.name,
-      })),
     };
 
-    const res = await fetch(`/api/certificates/generate`, {
+    const res = await fetch(`/api/certificates/generate/batch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -540,7 +536,7 @@ const handleGenerateCertificates = async (attendees: Attendee[] = []) => {
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `certificates_event_${id}.zip`;
+    link.download = `${event?.title}_event_certificates.zip`;
     link.click();
 
     window.URL.revokeObjectURL(url);

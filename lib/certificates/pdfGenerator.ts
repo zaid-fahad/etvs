@@ -1,76 +1,79 @@
 import PDFDocument from "pdfkit";
-import { loadImage } from "@napi-rs/canvas";
-import { QRCodeSVG } from "qrcode.react";
-import React from "react";
-import ReactDOMServer from "react-dom/server";
+import fs from "fs";
+import path from "path";
+import QRCode from "qrcode";
 
 export async function generateCertificatePDF({
   attendee,
   template,
 }: {
-  attendee: any;
-  template: any;
-}) {
+  attendee: { id: string; name?: string };
+  template: {
+    file: string; // base64 image
+    name: string;
+    settings: {
+      textX: number;
+      textY: number;
+      fontSize: number;
+      fontColor: string;
+      qrX: number;
+      qrY: number;
+      qrSize: number;
+      qrTransparent: boolean;
+    };
+  };
+}): Promise<Buffer> {
   return new Promise<Buffer>(async (resolve, reject) => {
     try {
       const settings = template.settings;
 
-      const doc = new PDFDocument({ size: "A4", margin: 0 });
+      const fontPath = path.join(
+        process.cwd(),
+        "public/fonts/OpenSans-Regular.ttf"
+      );
+
+      const doc = new PDFDocument({
+        size: "A4",
+        layout: "landscape",
+        margin: 0,
+        font: fontPath, // <- explicitly set font here
+      });
+
+      if (!fs.existsSync(fontPath)) {
+        throw new Error("Font file not found at " + fontPath);
+      }
+      doc.font(fontPath);
 
       const chunks: Buffer[] = [];
-      doc.on("data", (d) => chunks.push(d));
+      doc.on("data", (chunk) => chunks.push(chunk));
       doc.on("end", () => resolve(Buffer.concat(chunks)));
 
-      //
-      // ---- Background Image ----
-      //
+      // 2️⃣ Background image
       const bgBuffer = Buffer.from(template.file, "base64");
       doc.image(bgBuffer, 0, 0, {
         width: doc.page.width,
         height: doc.page.height,
       });
 
-      //
-      // ---- Attendee Name ----
-      //
+      // 3️⃣ Attendee name
       doc
         .fontSize(settings.fontSize)
         .fillColor(settings.fontColor)
         .text(attendee.name ?? "Unnamed", settings.textX, settings.textY);
 
-      //
-      // ---- QR Code using QRCodeSVG ----
-      //
+      // 4️⃣ QR code as PNG
       const qrURL = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-certificate/${attendee.id}`;
+      const qrDataURL = await QRCode.toDataURL(qrURL, {
+        margin: 0,
+        width: settings.qrSize,
+        color: {
+          dark: "#000000",
+          light: settings.qrTransparent ? "#00000000" : "#ffffff",
+        },
+      });
 
-      // 1️⃣ Render React SVG component → SVG string
-      const svgString = ReactDOMServer.renderToStaticMarkup(
-        React.createElement(QRCodeSVG, {
-          value: qrURL,
-          size: settings.qrSize,
-          bgColor: settings.qrTransparent ? "transparent" : "#ffffff",
-          fgColor: "#000000",
-          level: "M",
-        })
-      );
-
-      // 2️⃣ Convert SVG → PNG so pdfkit can embed it
-      const image = await loadImage(
-        `data:image/svg+xml;base64,${Buffer.from(svgString).toString(
-          "base64"
-        )}`
-      );
-
-      // Create a canvas and draw the image onto it
-      const { createCanvas } = await import("@napi-rs/canvas");
-      const canvas = createCanvas(settings.qrSize, settings.qrSize);
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(image, 0, 0, settings.qrSize, settings.qrSize);
-
-      const pngBuffer = canvas.toBuffer("image/png");
-
-      // 3️⃣ Insert QR image
-      doc.image(pngBuffer, settings.qrX, settings.qrY, {
+      const qrBuffer = Buffer.from(qrDataURL.split(",")[1], "base64");
+      doc.image(qrBuffer, settings.qrX, settings.qrY, {
         width: settings.qrSize,
         height: settings.qrSize,
       });

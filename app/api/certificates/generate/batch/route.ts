@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     // Fetch template
     const { data: event, error: eventErr } = await supabase
       .from("events")
-      .select("certificate_template")
+      .select("certificate_template, title")
       .eq("id", event_id)
       .single();
 
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
         template: event.certificate_template,
       });
 
-      const filename = `${at.name ?? at.student_id ?? at.guest_email}.pdf`;
+      const filename = `${at.name??"undefined"}_${at.student_id ?? at.guest_email}_${event?.title}_event_certificates.pdf`;
       zip.file(filename, pdf);
     }
 
