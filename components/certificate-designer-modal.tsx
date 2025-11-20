@@ -5,7 +5,7 @@ import Draggable from "react-draggable";
 import { QRCodeSVG } from "qrcode.react";
 
 interface DesignerProps {
-  template: File;
+  templateURL: string;
   initialSettings?: {
     textX: number;
     textY: number;
@@ -17,287 +17,217 @@ interface DesignerProps {
     qrTransparent: boolean;
   };
   onClose: () => void;
-  onSave: (settings: {
-    textX: number;
-    textY: number;
-    fontSize: number;
-    fontColor: string;
-    qrX: number;
-    qrY: number;
-    qrSize: number;
-    qrTransparent: boolean;
-  }) => void;
+  onSave: (settings: any) => void;
 }
 
 export default function CertificateDesignerModal({
-  template,
+  templateURL,
   initialSettings,
   onClose,
   onSave,
 }: DesignerProps) {
+  const imgRef = useRef<HTMLImageElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const qrRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const [textPos, setTextPos] = useState({
-    x: initialSettings?.textX || 120,
-    y: initialSettings?.textY || 120,
+  const [natural, setNatural] = useState({ w: 0, h: 0 });
+  const [display, setDisplay] = useState({ w: 0, h: 0 });
+
+  // POSITIONS
+  const [text, setText] = useState({
+    x: initialSettings?.textX ?? null,
+    y: initialSettings?.textY ?? null,
   });
 
-  const [qrPos, setQrPos] = useState({
-    x: initialSettings?.qrX || 350,
-    y: initialSettings?.qrY || 280,
+  const [qr, setQr] = useState({
+    x: initialSettings?.qrX ?? null,
+    y: initialSettings?.qrY ?? null,
   });
 
+  // STYLE VALUES
   const [fontSize, setFontSize] = useState(initialSettings?.fontSize || 28);
-  const [fontColor, setFontColor] = useState(initialSettings?.fontColor || "#000000");
+  const [fontColor, setFontColor] = useState(initialSettings?.fontColor || "#000");
+  const [qrSize, setQrSize] = useState(initialSettings?.qrSize || 120);
+  const [qrTransparent, setQrTransparent] = useState(
+    initialSettings?.qrTransparent || false
+  );
 
-  const [qrSize, setQrSize] = useState(initialSettings?.qrSize || 90);
-  const [qrTransparent, setQrTransparent] = useState(initialSettings?.qrTransparent || false);
+  const [snapGrid, setSnapGrid] = useState(false);
+  const snap = (n: number) =>
+    snapGrid ? Math.round(n / 10) * 10 : n;
 
-  const [snapToGrid, setSnapToGrid] = useState(false);
-  const gridSize = 10;
+  // IMAGE LOADED → GET REAL & DISPLAY SIZE
+  useEffect(() => {
+    if (!imgRef.current) return;
 
-  // Snap-to-grid helper
-  const snap = (pos: number) => (snapToGrid ? Math.round(pos / gridSize) * gridSize : pos);
+    const updateSize = () => {
+      const img = imgRef.current!;
+      setNatural({ w: img.naturalWidth, h: img.naturalHeight });
 
-  // Alignment function
-  const alignElement = (type: "text" | "qr", alignment: string) => {
-    if (!canvasRef.current) return;
-    const { width: cw, height: ch } = canvasRef.current.getBoundingClientRect();
+      const rect = canvasRef.current!.getBoundingClientRect();
+      const ratio = img.naturalWidth / img.naturalHeight;
 
-    const elementRef = type === "text" ? textRef.current : qrRef.current;
-    const { width: ew, height: eh } = elementRef!.getBoundingClientRect();
+      let width = rect.width;
+      let height = width / ratio;
 
-    let x = type === "text" ? textPos.x : qrPos.x;
-    let y = type === "text" ? textPos.y : qrPos.y;
+      if (height > rect.height) {
+        height = rect.height;
+        width = height * ratio;
+      }
 
-    switch (alignment) {
-      case "left":
-        x = 0;
-        break;
-      case "center":
-        x = (cw - ew) / 2;
-        break;
-      case "right":
-        x = cw - ew;
-        break;
-      case "top":
-        y = 0;
-        break;
-      case "middle":
-        y = (ch - eh) / 2;
-        break;
-      case "bottom":
-        y = ch - eh;
-        break;
+      setDisplay({ w: width, h: height });
+    };
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  // CENTER ELEMENTS IF NOT SET
+  useEffect(() => {
+    if (!display.w) return;
+
+    if (text.x === null || text.y === null) {
+      setText({ x: display.w / 2 - 150, y: display.h / 2 - 20 });
     }
+    if (qr.x === null || qr.y === null) {
+      setQr({ x: display.w / 2 - 60, y: display.h / 2 + 40 });
+    }
+  }, [display.w]);
 
-    if (type === "text") setTextPos({ x, y });
-    else setQrPos({ x, y });
+  // SAVE TRANSFORMED VALUES
+  const handleSave = () => {
+    const scaleX = natural.w / display.w;
+    const scaleY = natural.h / display.h;
+
+    onSave({
+      textX: Math.round(text.x! * scaleX),
+      textY: Math.round(text.y! * scaleY),
+      fontSize: Math.round(fontSize * scaleY),
+      fontColor,
+      qrX: Math.round(qr.x! * scaleX),
+      qrY: Math.round(qr.y! * scaleY),
+      qrSize: Math.round(qrSize * scaleX),
+      qrTransparent,
+    });
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-      <div className="bg-white w-[1000px] max-w-full rounded-xl shadow-xl flex">
-        {/* Canvas */}
-        <div
-          ref={canvasRef}
-          className="relative flex-1 border rounded-l-xl overflow-hidden bg-gray-100 h-[600px]"
-        >
-          <img
-            src={URL.createObjectURL(template)}
-            alt="Template"
-            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-          />
+    <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-xl flex w-[1100px] max-w-full h-[650px] overflow-hidden">
 
-          {/* Draggable Text */}
-          <Draggable
-            nodeRef={textRef}
-            bounds="parent"
-            position={textPos}
-            grid={snapToGrid ? [gridSize, gridSize] : undefined}
-            onStop={(e, data) => setTextPos({ x: snap(data.x), y: snap(data.y) })}
+        {/* LEFT CANVAS */}
+        <div className="flex-1 bg-gray-200 relative flex items-center justify-center overflow-hidden"
+             ref={canvasRef}>
+          
+          <div
+            className="relative"
+            style={{ width: display.w, height: display.h }}
           >
-            <div
-              ref={textRef}
-              className="absolute cursor-move font-bold select-none"
-              style={{
-                fontSize,
-                color: fontColor,
-                textShadow: "0px 0px 3px rgba(0,0,0,0.3)",
-              }}
-            >
-              Sample Text
-            </div>
-          </Draggable>
 
-          {/* Draggable QR */}
-          <Draggable
-            nodeRef={qrRef}
-            bounds="parent"
-            position={qrPos}
-            grid={snapToGrid ? [gridSize, gridSize] : undefined}
-            onStop={(e, data) => setQrPos({ x: snap(data.x), y: snap(data.y) })}
-          >
-            <div ref={qrRef} className="absolute cursor-move">
-              <QRCodeSVG
-                value="https://example.com/certificate"
-                width={qrSize}
-                height={qrSize}
-                bgColor={qrTransparent ? "transparent" : "#ffffff"}
-              />
-            </div>
-          </Draggable>
+            {/* TEMPLATE IMAGE */}
+            <img
+              ref={imgRef}
+              src={templateURL}
+              className="w-full h-full object-contain pointer-events-none"
+            />
+
+            {/* TEXT */}
+            {text.x !== null && (
+              <Draggable
+                bounds="parent"
+                nodeRef={textRef}
+                position={{ x: text.x, y: text.y }}
+                onDrag={(e, d) => setText({ x: snap(d.x), y: snap(d.y) })}
+              >
+                <div
+                  ref={textRef}
+                  className="absolute cursor-move font-semibold select-none"
+                  style={{ fontSize, color: fontColor }}
+                >
+                  Sample Name
+                </div>
+              </Draggable>
+            )}
+
+            {/* QR */}
+            {qr.x !== null && (
+              <Draggable
+                bounds="parent"
+                nodeRef={qrRef}
+                position={{ x: qr.x, y: qr.y }}
+                onDrag={(e, d) => setQr({ x: snap(d.x), y: snap(d.y) })}
+              >
+                <div ref={qrRef} className="absolute cursor-move">
+                  <QRCodeSVG
+                    value="sample"
+                    width={qrSize}
+                    height={qrSize}
+                    bgColor={qrTransparent ? "transparent" : "#fff"}
+                  />
+                </div>
+              </Draggable>
+            )}
+
+          </div>
         </div>
 
-        {/* Controls */}
-        <div className="w-[300px] p-5 space-y-4 bg-gray-50 border-l rounded-r-xl overflow-y-auto">
-          <h3 className="text-lg font-bold mb-2">Controls</h3>
+        {/* RIGHT PANEL */}
+        <div className="w-[320px] bg-gray-50 border-l p-5 space-y-5 overflow-y-auto">
 
-          {/* Font Size */}
+          <h2 className="text-xl font-bold">Designer Controls</h2>
+
+          {/* SLIDERS */}
           <div>
-            <label className="font-semibold">Text Font Size</label>
-            <input
-              type="range"
-              min={10}
-              max={100}
-              value={fontSize}
+            <label className="font-semibold">Text Size</label>
+            <input type="range" min={10} max={120} value={fontSize}
               onChange={(e) => setFontSize(Number(e.target.value))}
-              className="w-full"
-            />
-            <input
-              type="number"
-              value={fontSize}
-              onChange={(e) => setFontSize(Number(e.target.value))}
-              className="w-full border rounded-md px-2 py-1 mt-1"
-            />
+              className="w-full" />
           </div>
 
-          {/* Font Color */}
           <div>
             <label className="font-semibold">Text Color</label>
-            <input
-              type="color"
-              value={fontColor}
-              onChange={(e) => setFontColor(e.target.value)}
-              className="w-full h-[35px] border rounded-md cursor-pointer"
-            />
+            <input type="color" className="w-full h-10"
+              value={fontColor} onChange={(e) => setFontColor(e.target.value)} />
           </div>
 
-          {/* QR Size */}
           <div>
             <label className="font-semibold">QR Size</label>
-            <input
-              type="range"
-              min={50}
-              max={300}
-              value={qrSize}
+            <input type="range" min={40} max={300} value={qrSize}
               onChange={(e) => setQrSize(Number(e.target.value))}
-              className="w-full"
-            />
-            <input
-              type="number"
-              value={qrSize}
-              onChange={(e) => setQrSize(Number(e.target.value))}
-              className="w-full border rounded-md px-2 py-1 mt-1"
-            />
+              className="w-full" />
           </div>
 
-          {/* QR Transparent */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={qrTransparent}
-              onChange={(e) => setQrTransparent(e.target.checked)}
-            />
-            <label className="font-semibold">QR Transparent Background</label>
-          </div>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={qrTransparent}
+              onChange={(e) => setQrTransparent(e.target.checked)} />
+            Transparent QR Background
+          </label>
 
-          {/* Snap to Grid */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={snapToGrid}
-              onChange={(e) => setSnapToGrid(e.target.checked)}
-            />
-            <label className="font-semibold">Snap to Grid</label>
-          </div>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={snapGrid}
+              onChange={(e) => setSnapGrid(e.target.checked)} />
+            Snap to 10px Grid
+          </label>
 
-          {/* Alignment */}
-          <div className="space-y-2">
-            <label className="font-semibold">Text Alignment</label>
-            <div className="flex flex-wrap gap-2">
-              {["left", "center", "right"].map((a) => (
-                <button
-                  key={a}
-                  className="px-2 py-1 border rounded hover:bg-gray-200"
-                  onClick={() => alignElement("text", a)}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {["top", "middle", "bottom"].map((a) => (
-                <button
-                  key={a}
-                  className="px-2 py-1 border rounded hover:bg-gray-200"
-                  onClick={() => alignElement("text", a)}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-
-            <label className="font-semibold mt-3">QR Alignment</label>
-            <div className="flex flex-wrap gap-2">
-              {["left", "center", "right"].map((a) => (
-                <button
-                  key={a}
-                  className="px-2 py-1 border rounded hover:bg-gray-200"
-                  onClick={() => alignElement("qr", a)}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {["top", "middle", "bottom"].map((a) => (
-                <button
-                  key={a}
-                  className="px-2 py-1 border rounded hover:bg-gray-200"
-                  onClick={() => alignElement("qr", a)}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Save / Close */}
-          <div className="flex justify-between mt-5">
-            <button onClick={onClose} className="px-4 py-2 border rounded-lg hover:bg-gray-200">
+          {/* BUTTONS */}
+          <div className="flex gap-3 pt-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2 border rounded-lg hover:bg-gray-100"
+            >
               Cancel
             </button>
+
             <button
-              onClick={() =>
-                onSave({
-                  textX: textPos.x,
-                  textY: textPos.y,
-                  fontSize,
-                  fontColor,
-                  qrX: qrPos.x,
-                  qrY: qrPos.y,
-                  qrSize,
-                  qrTransparent,
-                })
-              }
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md"
+              onClick={handleSave}
+              className="flex-1 py-2 rounded-lg bg-blue-600 text-white shadow hover:bg-blue-700"
             >
-              Save & Close
+              Save
             </button>
           </div>
+
         </div>
       </div>
     </div>

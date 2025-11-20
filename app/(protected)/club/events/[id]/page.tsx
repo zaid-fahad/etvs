@@ -361,10 +361,18 @@
 // club/events/[id]/page.tsx
 "use client";
 
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY!
+);
+
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import AddAttendeeModal from "@/components/add-attendee-modal";
 import CertificateDesignerModal from "@/components/certificate-designer-modal";
+import { Url } from "url";
 
 interface Attendee {
   id: string;
@@ -394,7 +402,7 @@ export default function EventDetailsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [certificateTemplate, setCertificateTemplate] = useState<File | null>(
+  const [certificateTemplate, setCertificateTemplate] = useState<string | null>(
     null
   );
   const [generating, setGenerating] = useState(false);
@@ -422,14 +430,13 @@ export default function EventDetailsPage() {
       // If certificate_template exists, set template/settings
       if (data.event.certificate_template) {
         const { file, settings } = data.event.certificate_template;
-        if (file) {
-          const blob = b64toBlob(file);
-          const templateFile = new File(
-            [blob],
-            data.event.certificate_template.name || "template.png"
-          );
-          setCertificateTemplate(templateFile);
-        }
+        if (data.event.certificate_template?.url) {
+  const imgUrl = data.event.certificate_template.url;
+  // const blob = await (await fetch(imgUrl)).blob();
+  // setCertificateTemplate(new File([blob], "template"));
+  setCertificateTemplate(imgUrl);
+}
+
         if (settings) setCertificateSettings(settings);
       }
     } catch (err) {
@@ -497,56 +504,56 @@ export default function EventDetailsPage() {
     }
   };
 
-const handleGenerateCertificates = async (attendees: Attendee[] = []) => {
-  if (!certificateTemplate) {
-    alert("Please upload or configure a certificate template first.");
-    return;
-  }
-  if (!certificateSettings) {
-    alert("Please set the certificate text and QR positions first.");
-    return;
-  }
-
-  if (!Array.isArray(attendees) || attendees.length === 0) {
-    alert("Please select at least one attendee.");
-    return;
-  }
-
-  setGenerating(true);
-
-  try {
-    const payload = {
-      event_id: id,
-    };
-
-    const res = await fetch(`/api/certificates/generate/batch`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      throw new Error("API failed");
+  const handleGenerateCertificates = async (attendees: Attendee[] = []) => {
+    if (!certificateTemplate) {
+      alert("Please upload or configure a certificate template first.");
+      return;
+    }
+    if (!certificateSettings) {
+      alert("Please set the certificate text and QR positions first.");
+      return;
     }
 
-    const blob = await res.blob();
+    if (!Array.isArray(attendees) || attendees.length === 0) {
+      alert("Please select at least one attendee.");
+      return;
+    }
 
-    // Download ZIP
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    setGenerating(true);
 
-    link.href = url;
-    link.download = `${event?.title}_event_certificates.zip`;
-    link.click();
+    try {
+      const payload = {
+        event_id: id,
+      };
 
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    console.error(err);
-    alert("Failed to generate certificates");
-  } finally {
-    setGenerating(false);
-  }
-};
+      const res = await fetch(`/api/certificates/generate/batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error("API failed");
+      }
+
+      const blob = await res.blob();
+
+      // Download ZIP
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `${event?.title}_event_certificates.zip`;
+      link.click();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate certificates");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   if (loading)
     return (
@@ -570,55 +577,7 @@ const handleGenerateCertificates = async (attendees: Attendee[] = []) => {
           onRefresh={fetchAttendees}
         />
       )}
-      {showDesigner && certificateTemplate && (
-        <CertificateDesignerModal
-          template={certificateTemplate}
-          initialSettings={certificateSettings ?? undefined}
-          onClose={() => setShowDesigner(false)}
-          onSave={async (settings) => {
-            try {
-              // Convert file to base64
-              const arrayBuffer = await certificateTemplate.arrayBuffer();
-              const base64 = Buffer.from(arrayBuffer).toString("base64");
-
-              const payload = {
-                template: {
-                  file: base64,
-                  name: certificateTemplate.name,
-                  settings: {
-                    textX: settings.textX,
-                    textY: settings.textY,
-                    fontSize: settings.fontSize,
-                    fontColor: settings.fontColor,
-                    qrX: settings.qrX ?? 0,
-                    qrY: settings.qrY ?? 0,
-                    qrSize: settings.qrSize,
-                    qrTransparent: settings.qrTransparent,
-                  },
-                },
-              };
-
-              const res = await fetch(`/api/events/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-              });
-
-              if (!res.ok)
-                throw new Error("Failed to save certificate settings");
-
-              const data = await res.json();
-              console.log("Saved certificate settings:", data.event);
-
-              setCertificateSettings(settings);
-              setShowDesigner(false);
-            } catch (err) {
-              console.error(err);
-              alert("Failed to save certificate settings");
-            }
-          }}
-        />
-      )}
+     
 
       {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 flex justify-between items-center rounded-xl">
@@ -629,7 +588,7 @@ const handleGenerateCertificates = async (attendees: Attendee[] = []) => {
       {/* Event Info + Certificate */}
       <div className="flex flex-col md:flex-row gap-6">
         {/* Event Info */}
-        <div className="bg-white rounded-xl shadow-md flex-1">
+        <div className="bg-white rounded-xlfile shadow-md flex-1">
           <div className="bg-indigo-700 px-6 py-4 text-white font-semibold flex items-center rounded-t-xl">
             Event Information
           </div>
@@ -659,9 +618,43 @@ const handleGenerateCertificates = async (attendees: Attendee[] = []) => {
               <input
                 type="file"
                 accept=".pdf,.png,.jpg"
-                onChange={(e) =>
-                  setCertificateTemplate(e.target.files?.[0] || null)
-                }
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+
+                  // Upload to Supabase
+                  const fileExt = file.name.split(".").pop();
+                  const fileName = `certificates/${id}_${Date.now()}.${fileExt}`;
+
+                  const { data, error } = await supabase.storage
+                    .from("certificate")
+                    .upload(fileName, file, { upsert: true });
+
+                  if (error) {
+                    console.error("Upload error:", error);
+                    alert("Failed to upload template");
+                    return;
+                  }
+
+                  // Get public URL
+                  const { data: urlData } = supabase.storage
+                    .from("certificate")
+                    .getPublicUrl(fileName);
+
+                  const publicUrl = urlData.publicUrl;
+                  setCertificateTemplate(publicUrl);
+
+                  // Save URL in event
+                  await fetch(`/api/events/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      template_url: publicUrl,
+                    }),
+                  });
+
+                  console.log("Template uploaded:", publicUrl);
+                }}
                 className="w-full px-3 py-2 border rounded-md"
               />
             </div>
@@ -689,6 +682,51 @@ const handleGenerateCertificates = async (attendees: Attendee[] = []) => {
           </div>
         </div>
       </div>
+
+       {showDesigner && certificateTemplate && (
+        <CertificateDesignerModal
+          templateURL={certificateTemplate}
+          initialSettings={certificateSettings ?? undefined}
+          onClose={() => setShowDesigner(false)}
+          onSave={async (settings) => {
+            try {
+              const payload = {
+                certificate_template: {
+                  url: certificateTemplate || "",
+                  settings: {
+                    textX: settings.textX,
+                    textY: settings.textY,
+                    fontSize: settings.fontSize,
+                    fontColor: settings.fontColor,
+                    qrX: settings.qrX,
+                    qrY: settings.qrY,
+                    qrSize: settings.qrSize,
+                    qrTransparent: settings.qrTransparent,
+                  },
+                },
+              };
+
+              const res = await fetch(`/api/events/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+
+              if (!res.ok)
+                throw new Error("Failed to save certificate settings");
+
+              const data = await res.json();
+              console.log("Saved:", data.event);
+
+              setCertificateSettings(settings);
+              setShowDesigner(false);
+            } catch (err) {
+              console.error(err);
+              alert("Failed to save certificate settings");
+            }
+          }}
+        />
+      )}
 
       {/* Attendees Table */}
       <div className="bg-white rounded-xl shadow-md overflow-x-auto">

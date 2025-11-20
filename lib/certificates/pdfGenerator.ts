@@ -2,6 +2,22 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 import QRCode from "qrcode";
+import axios from "axios";
+// Source - https://stackoverflow.com/q
+// Posted by Alissa
+// Retrieved 2025-11-20, License - CC BY-SA 4.0
+
+async function convertImageToBase64(picture: string): Promise<string | null> {
+  try {
+      const imageResponse = await axios.get(picture, { responseType: 'arraybuffer' });
+      const imageBuffer = Buffer.from(imageResponse.data);
+      return imageBuffer.toString('base64');
+  } catch (error) {
+      console.error('Error fetching image from URL:', error);
+      return null; 
+  }
+}
+
 
 export async function generateCertificatePDF({
   attendee,
@@ -9,7 +25,8 @@ export async function generateCertificatePDF({
 }: {
   attendee: { id: string; name?: string };
   template: {
-    file: string; // base64 image
+    // file: string; // base64 image
+    url: string;
     name: string;
     settings: {
       textX: number;
@@ -49,7 +66,10 @@ export async function generateCertificatePDF({
       doc.on("end", () => resolve(Buffer.concat(chunks)));
 
       // 2️⃣ Background image
-      const bgBuffer = Buffer.from(template.file, "base64");
+      const templateBase64 = await convertImageToBase64(template.url);
+      if (!templateBase64) throw new Error("Failed to load template image");
+      const bgBuffer = Buffer.from(templateBase64, "base64");
+      // const bgBuffer = Buffer.from(template.file, "base64");
       doc.image(bgBuffer, 0, 0, {
         width: doc.page.width,
         height: doc.page.height,

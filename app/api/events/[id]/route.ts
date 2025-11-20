@@ -78,23 +78,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 //   }
 // }
 
+
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const supabase = await createClient();
-  const { id } = params;
+  const { id } = await params;
 
   try {
-    const body = await req.json(); // parse JSON
-    const template = body.template;
+    const body = await req.json();
+    const { template_url, certificate_template } = body;
 
-    if (!template || !template.file) {
-      return NextResponse.json(
-        { error: "Template file (base64) is required" },
-        { status: 400 }
-      );
-    }
-
-    // Fetch existing event
-    const { data: existingEvent, error: fetchError } = await supabase
+    // Fetch existing event template
+    const { data: existing, error: fetchError } = await supabase
       .from("events")
       .select("certificate_template")
       .eq("id", id)
@@ -104,47 +98,31 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: fetchError.message }, { status: 404 });
     }
 
-    const existingTemplate = existingEvent?.certificate_template || {};
+    const existingTemplate = existing?.certificate_template || {};
     const existingSettings = existingTemplate.settings || {};
 
-    // Explicitly build new settings object
+    // Build settings safely
     const newSettings = {
-      textX: (template.settings && template.settings.textX != null)
-        ? Number(template.settings.textX)
-        : (existingSettings.textX != null ? existingSettings.textX : 0),
-      textY: (template.settings && template.settings.textY != null)
-        ? Number(template.settings.textY)
-        : (existingSettings.textY != null ? existingSettings.textY : 0),
-      fontSize: (template.settings && template.settings.fontSize != null)
-        ? Number(template.settings.fontSize)
-        : (existingSettings.fontSize != null ? existingSettings.fontSize : 12),
-      fontColor: (template.settings && template.settings.fontColor != null)
-        ? String(template.settings.fontColor)
-        : (existingSettings.fontColor != null ? existingSettings.fontColor : "#000000"),
-      qrSize: (template.settings && template.settings.qrSize != null)
-        ? Number(template.settings.qrSize)
-        : (existingSettings.qrSize != null ? existingSettings.qrSize : 100),
-      qrX: (template.settings && template.settings.qrX != null)
-        ? Number(template.settings.qrX)
-        : (existingSettings.qrX != null ? existingSettings.qrX : 0),
-      qrY: (template.settings && template.settings.qrY != null)
-        ? Number(template.settings.qrY)
-        : (existingSettings.qrY != null ? existingSettings.qrY : 0),
-      qrTransparent: (template.settings && template.settings.qrTransparent != null)
-        ? Boolean(template.settings.qrTransparent)
-        : (existingSettings.qrTransparent != null ? existingSettings.qrTransparent : false),
+      textX: certificate_template?.settings?.textX ?? existingSettings.textX ?? 0,
+      textY: certificate_template?.settings?.textY ?? existingSettings.textY ?? 0,
+      fontSize: certificate_template?.settings?.fontSize ?? existingSettings.fontSize ?? 28,
+      fontColor: certificate_template?.settings?.fontColor ?? existingSettings.fontColor ?? "#000000",
+      qrX: certificate_template?.settings?.qrX ?? existingSettings.qrX ?? 0,
+      qrY: certificate_template?.settings?.qrY ?? existingSettings.qrY ?? 0,
+      qrSize: certificate_template?.settings?.qrSize ?? existingSettings.qrSize ?? 100,
+      qrTransparent: certificate_template?.settings?.qrTransparent ?? existingSettings.qrTransparent ?? false,
     };
 
-    // Build final certificate_template object explicitly
-    const newTemplate = {
-      file: template.file,
-      name: template.name != null ? template.name : (existingTemplate.name != null ? existingTemplate.name : "template.png"),
+    // Final value stored in DB
+    const updatedTemplate = {
+      url: template_url ?? existingTemplate.url ?? null,
       settings: newSettings,
     };
 
+    // Perform DB update
     const { data, error } = await supabase
       .from("events")
-      .update({ certificate_template: newTemplate })
+      .update({ certificate_template: updatedTemplate })
       .eq("id", id)
       .select()
       .single();
@@ -155,13 +133,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     return NextResponse.json({ event: data });
   } catch (err: any) {
-    console.error("Failed to update certificate template:", err);
+    console.error("Template update failed:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to update certificate template" },
+      { error: err.message || "Failed to update template" },
       { status: 500 }
     );
   }
 }
+
 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
